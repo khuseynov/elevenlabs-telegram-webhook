@@ -94,21 +94,21 @@ def build_telegram_message(data, whatsapp_requested, human_followup_needed):
 
     triggers = []
     if whatsapp_requested:
-        triggers.append("WhatsApp Requested")
+        triggers.append("WhatsApp Talebi")
     if human_followup_needed:
-        triggers.append("Human Follow-up Needed")
-    trigger_label = " + ".join(triggers) if triggers else "Alert"
+        triggers.append("İnsan Desteği Gerekli")
+    trigger_label = " + ".join(triggers) if triggers else "Bildirim"
 
     message = (
-        f"📞 {trigger_label} — New Call\n\n"
-        f"🤖 Agent: {agent_name}\n"
-        f"📱 Phone: {phone}\n"
-        f"🕐 Time: {call_time} (Istanbul)\n"
-        f"⏱ Duration: {duration}s\n\n"
-        f"📲 WhatsApp requested: {'Yes' if whatsapp_requested else 'No'}\n"
-        f"🙋 Human follow-up needed: {'Yes' if human_followup_needed else 'No'}\n\n"
-        f"💬 WhatsApp reason: {reason}\n"
-        f"📝 Summary: {summary}\n\n"
+        f"📞 {trigger_label} — Yeni Arama\n\n"
+        f"🤖 Ajan: {agent_name}\n"
+        f"📱 Telefon: {phone}\n"
+        f"🕐 Saat: {call_time} (İstanbul)\n"
+        f"⏱ Süre: {duration} sn\n\n"
+        f"📲 WhatsApp talep edildi mi: {'Evet' if whatsapp_requested else 'Hayır'}\n"
+        f"🙋 İnsan desteği gerekli mi: {'Evet' if human_followup_needed else 'Hayır'}\n\n"
+        f"💬 WhatsApp talep sebebi: {reason}\n"
+        f"📝 Özet: {summary}\n\n"
         f"🆔 {conversation_id}"
     )
     return message
