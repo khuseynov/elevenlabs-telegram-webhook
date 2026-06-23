@@ -80,11 +80,7 @@ def get_data_collection_value(data, field_name):
 
 def build_telegram_message(data, whatsapp_requested, human_followup_needed):
     agent_name = safe_get(data, "agent_name", default="Unknown agent")
-    phone = (
-        safe_get(data, "metadata", "phone_call", "external_number")
-        or safe_get(data, "user_id")
-        or "Unknown"
-    )
+    phone = safe_get(data, "metadata", "phone_call", "external_number") or "Bilinmiyor (telefon araması değil)"
     start_time_secs = safe_get(data, "metadata", "start_time_unix_secs")
     call_time = format_istanbul_time(start_time_secs)
     duration = safe_get(data, "metadata", "call_duration_secs", default="N/A")
