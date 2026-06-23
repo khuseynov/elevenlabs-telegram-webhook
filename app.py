@@ -68,7 +68,7 @@ def get_data_collection_value(data, field_name):
         return None
 
 
-def build_telegram_message(data):
+def build_telegram_message(data, whatsapp_requested, human_followup_needed):
     agent_name = data.get("agent_name", "Unknown agent")
     phone = (
         data.get("metadata", {})
@@ -84,13 +84,22 @@ def build_telegram_message(data):
     summary = data.get("analysis", {}).get("transcript_summary", "N/A")
     conversation_id = data.get("conversation_id", "N/A")
 
+    triggers = []
+    if whatsapp_requested:
+        triggers.append("WhatsApp Requested")
+    if human_followup_needed:
+        triggers.append("Human Follow-up Needed")
+    trigger_label = " + ".join(triggers) if triggers else "Alert"
+
     message = (
-        "📞 *WhatsApp Request — New Call*\n\n"
+        f"📞 *{trigger_label} — New Call*\n\n"
         f"🤖 Agent: {agent_name}\n"
         f"📱 Phone: {phone}\n"
         f"🕐 Time: {call_time} (Istanbul)\n"
         f"⏱ Duration: {duration}s\n\n"
-        f"💬 Reason: {reason}\n"
+        f"📲 WhatsApp requested: {'Yes' if whatsapp_requested else 'No'}\n"
+        f"🙋 Human follow-up needed: {'Yes' if human_followup_needed else 'No'}\n\n"
+        f"💬 WhatsApp reason: {reason}\n"
         f"📝 Summary: {summary}\n\n"
         f"🆔 {conversation_id}"
     )
@@ -148,12 +157,16 @@ def elevenlabs_webhook():
         return jsonify({"status": "ignored", "reason": "no data field found"}), 200
 
     whatsapp_requested = get_data_collection_value(data, "whatsapp_requested")
+    human_followup_needed = get_data_collection_value(data, "human_followup_needed")
 
     conversation_id = data.get("conversation_id", "unknown")
-    logger.info("Processed call %s — whatsapp_requested=%s", conversation_id, whatsapp_requested)
+    logger.info(
+        "Processed call %s — whatsapp_requested=%s, human_followup_needed=%s",
+        conversation_id, whatsapp_requested, human_followup_needed,
+    )
 
-    if whatsapp_requested is True:
-        message = build_telegram_message(data)
+    if whatsapp_requested is True or human_followup_needed is True:
+        message = build_telegram_message(data, whatsapp_requested, human_followup_needed)
         sent = send_telegram_message(message)
         if not sent:
             # Still return 200 to ElevenLabs — we don't want it to retry/disable
