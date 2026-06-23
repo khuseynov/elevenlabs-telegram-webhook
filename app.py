@@ -92,7 +92,7 @@ def build_telegram_message(data, whatsapp_requested, human_followup_needed):
     trigger_label = " + ".join(triggers) if triggers else "Alert"
 
     message = (
-        f"📞 *{trigger_label} — New Call*\n\n"
+        f"📞 {trigger_label} — New Call\n\n"
         f"🤖 Agent: {agent_name}\n"
         f"📱 Phone: {phone}\n"
         f"🕐 Time: {call_time} (Istanbul)\n"
@@ -117,7 +117,6 @@ def send_telegram_message(text):
             json={
                 "chat_id": TELEGRAM_CHAT_ID,
                 "text": text,
-                "parse_mode": "Markdown",
             },
             timeout=10,
         )
