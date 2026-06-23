@@ -58,31 +58,39 @@ def extract_call_record(payload):
     return payload.get("data")
 
 
+def safe_get(d, *keys, default=None):
+    """
+    Safely walk a chain of dict.get() calls. Returns `default` if any
+    intermediate value is missing OR explicitly None (which plain chained
+    .get() calls do not handle, since dict.get(key, {}) only falls back
+    to {} when the key is absent, not when its value is null).
+    """
+    current = d
+    for key in keys:
+        if not isinstance(current, dict):
+            return default
+        current = current.get(key)
+    return current if current is not None else default
+
+
 def get_data_collection_value(data, field_name):
     """Safely pull a data_collection_results[field_name].value out of the call data."""
-    try:
-        results = data.get("analysis", {}).get("data_collection_results", {})
-        field = results.get(field_name, {})
-        return field.get("value")
-    except AttributeError:
-        return None
+    return safe_get(data, "analysis", "data_collection_results", field_name, "value")
 
 
 def build_telegram_message(data, whatsapp_requested, human_followup_needed):
-    agent_name = data.get("agent_name", "Unknown agent")
+    agent_name = safe_get(data, "agent_name", default="Unknown agent")
     phone = (
-        data.get("metadata", {})
-        .get("phone_call", {})
-        .get("external_number")
-        or data.get("user_id")
+        safe_get(data, "metadata", "phone_call", "external_number")
+        or safe_get(data, "user_id")
         or "Unknown"
     )
-    start_time_secs = data.get("metadata", {}).get("start_time_unix_secs")
+    start_time_secs = safe_get(data, "metadata", "start_time_unix_secs")
     call_time = format_istanbul_time(start_time_secs)
-    duration = data.get("metadata", {}).get("call_duration_secs", "N/A")
+    duration = safe_get(data, "metadata", "call_duration_secs", default="N/A")
     reason = get_data_collection_value(data, "whatsapp_request_reason") or "N/A"
-    summary = data.get("analysis", {}).get("transcript_summary", "N/A")
-    conversation_id = data.get("conversation_id", "N/A")
+    summary = safe_get(data, "analysis", "transcript_summary", default="N/A")
+    conversation_id = safe_get(data, "conversation_id", default="N/A")
 
     triggers = []
     if whatsapp_requested:
@@ -158,15 +166,21 @@ def elevenlabs_webhook():
     whatsapp_requested = get_data_collection_value(data, "whatsapp_requested")
     human_followup_needed = get_data_collection_value(data, "human_followup_needed")
 
-    conversation_id = data.get("conversation_id", "unknown")
+    conversation_id = safe_get(data, "conversation_id", default="unknown")
     logger.info(
         "Processed call %s — whatsapp_requested=%s, human_followup_needed=%s",
         conversation_id, whatsapp_requested, human_followup_needed,
     )
 
     if whatsapp_requested is True or human_followup_needed is True:
-        message = build_telegram_message(data, whatsapp_requested, human_followup_needed)
-        sent = send_telegram_message(message)
+        try:
+            message = build_telegram_message(data, whatsapp_requested, human_followup_needed)
+            sent = send_telegram_message(message)
+        except Exception:
+            logger.exception("Unexpected error building/sending Telegram message for call %s", conversation_id)
+            # Still return 200 to ElevenLabs so it doesn't retry/disable the webhook.
+            return jsonify({"status": "error", "reason": "internal error"}), 200
+
         if not sent:
             # Still return 200 to ElevenLabs — we don't want it to retry/disable
             # the webhook just because our Telegram delivery hiccuped.
