@@ -78,7 +78,7 @@ def get_data_collection_value(data, field_name):
     return safe_get(data, "analysis", "data_collection_results", field_name, "value")
 
 
-def build_telegram_message(data, whatsapp_requested, human_followup_needed):
+def build_telegram_message(data):
     agent_name = safe_get(data, "agent_name", default="Unknown agent")
     phone = safe_get(data, "metadata", "phone_call", "external_number") or "Bilinmiyor (telefon araması değil)"
     start_time_secs = safe_get(data, "metadata", "start_time_unix_secs")
@@ -88,21 +88,12 @@ def build_telegram_message(data, whatsapp_requested, human_followup_needed):
     summary = safe_get(data, "analysis", "transcript_summary", default="N/A")
     conversation_id = safe_get(data, "conversation_id", default="N/A")
 
-    triggers = []
-    if whatsapp_requested:
-        triggers.append("WhatsApp Talebi")
-    if human_followup_needed:
-        triggers.append("İnsan Desteği Gerekli")
-    trigger_label = " + ".join(triggers) if triggers else "Bildirim"
-
     message = (
-        f"📞 {trigger_label} — Yeni Arama\n\n"
+        f"📞 WhatsApp Talebi — Yeni Arama\n\n"
         f"🤖 Ajan: {agent_name}\n"
         f"📱 Telefon: {phone}\n"
         f"🕐 Saat: {call_time} (İstanbul)\n"
         f"⏱ Süre: {duration} sn\n\n"
-        f"📲 WhatsApp talep edildi mi: {'Evet' if whatsapp_requested else 'Hayır'}\n"
-        f"🙋 İnsan desteği gerekli mi: {'Evet' if human_followup_needed else 'Hayır'}\n\n"
         f"💬 WhatsApp talep sebebi: {reason}\n"
         f"📝 Özet: {summary}\n\n"
         f"🆔 {conversation_id}"
@@ -168,9 +159,9 @@ def elevenlabs_webhook():
         conversation_id, whatsapp_requested, human_followup_needed,
     )
 
-    if whatsapp_requested is True or human_followup_needed is True:
+    if whatsapp_requested is True:
         try:
-            message = build_telegram_message(data, whatsapp_requested, human_followup_needed)
+            message = build_telegram_message(data)
             sent = send_telegram_message(message)
         except Exception:
             logger.exception("Unexpected error building/sending Telegram message for call %s", conversation_id)
